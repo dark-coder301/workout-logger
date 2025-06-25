@@ -1,0 +1,102 @@
+import tkinter as tk
+from tkinter import messagebox, scrolledtext
+import requests
+from datetime import datetime
+
+# API config
+APP_ID = "05df828e"
+API_KEY = "00f737d0bf870c04c5025e1dc84f9424"
+SHEETY_URL = "https://api.sheety.co/bf31959c59f2e3af3b92b130fde0bcee/myWorkouts1/sheet1"
+TOKEN = "mySuperSecretToken321"
+
+# Main function
+def log_workout():
+    exercise_text = text_input.get("1.0", tk.END).strip()
+    if not exercise_text:
+        messagebox.showwarning("Input Error", "Please describe your workout.")
+        return
+
+    now = datetime.now()
+    date = now.strftime("%d/%m/%Y")
+    time_now = now.strftime("%H:%M:%S")
+
+    try:
+        response = requests.post(
+            url="https://trackapi.nutritionix.com/v2/natural/exercise",
+            json={
+                "query": exercise_text,
+                "weight_kg": 73,
+                "height_cm": 178,
+                "age": 19,
+            },
+            headers={
+                "x-app-id": APP_ID,
+                "x-app-key": API_KEY,
+                "Content-Type": "application/json"
+            }
+        )
+        result = response.json()
+        output_text.config(state="normal")
+        output_text.delete("1.0", tk.END)
+
+        for exercise in result["exercises"]:
+            sheet_inputs = {
+                "sheet1": {
+                    "date": date,
+                    "time": time_now,
+                    "exercise": exercise["name"].title(),
+                    "duration": exercise["duration_min"],
+                    "calories": exercise["nf_calories"],
+                }
+            }
+            requests.post(
+                url=SHEETY_URL,
+                json=sheet_inputs,
+                headers={"Authorization": f"Bearer {TOKEN}"}
+            )
+
+            entry = f"✅ {exercise['name'].title()} | {exercise['duration_min']} min | {exercise['nf_calories']} cal\n"
+            output_text.insert(tk.END, entry)
+
+        output_text.config(state="disabled")
+        messagebox.showinfo("Success", "Workout logged successfully!")
+
+    except Exception as e:
+        messagebox.showerror("Error", f"An error occurred:\n{e}")
+
+# GUI Setup
+root = tk.Tk()
+root.title("🏋️ Workout Logger")
+root.geometry("600x600")
+root.configure(bg="#e3f2fd")
+
+# Title
+tk.Label(root, text="Workout Tracker", font=("Helvetica", 20, "bold"), bg="#e3f2fd", fg="#0d47a1").pack(pady=20)
+
+# Input
+text_input = scrolledtext.ScrolledText(root, wrap=tk.WORD, width=60, height=5, font=("Arial", 12), bg="#f0f8ff", borderwidth=2, relief="groove")
+text_input.pack(pady=10)
+text_input.insert(tk.END, "e.g. I ran 5km and did 30 minutes of yoga")
+
+# Button
+tk.Button(
+    root,
+    text="Log Workout",
+    command=log_workout,
+    font=("Arial", 14, "bold"),
+    bg="#0d47a1",
+    fg="white",
+    activebackground="#1565c0",
+    width=20,
+    height=2,
+    relief="raised",
+    borderwidth=0
+).pack(pady=15)
+
+# Output
+tk.Label(root, text="📝 Results:", font=("Arial", 14), bg="#e3f2fd", fg="#2e7d32").pack()
+output_text = scrolledtext.ScrolledText(root, wrap=tk.WORD, width=60, height=10, font=("Arial", 11), bg="#e8f5e9", borderwidth=2, relief="ridge")
+output_text.pack(pady=10)
+output_text.config(state="disabled")
+
+root.mainloop()
